@@ -12,6 +12,9 @@ android {
     namespace = "com.example.pure_skin_ai"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
+    aaptOptions{
+        noCompress ("tflite")
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -27,10 +30,13 @@ android {
         applicationId = "com.example.pure_skin_ai"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        defaultConfig {
+    applicationId = "com.example.pure_skin_ai"
+    minSdk = flutter.minSdkVersion
+    targetSdk = 34
+    versionCode = 1
+    versionName = "1.0"
+}
     }
 
     buildTypes {

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pure_skin_ai/auth/login_page.dart';
 import 'package:pure_skin_ai/auth/register_page.dart';
 
+
 class WelcomePage extends StatefulWidget {
   const WelcomePage({super.key});
 

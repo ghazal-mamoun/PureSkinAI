@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pure_skin_ai/auth/register_page.dart';
 import 'package:pure_skin_ai/auth/screens/Home/home_page.dart';
-import 'package:pure_skin_ai/auth/screens/products/product_page.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // استيراد المكتبة مباشرة هنا
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pure_skin_ai/auth/screens/product/product.dart'; 
 
 
 class LogIn extends StatefulWidget {
@@ -39,7 +39,7 @@ class _LogInState extends State<LogIn> {
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const ProductPage()),
+          MaterialPageRoute(builder: (context) => const Product()),
         );
       } on FirebaseAuthException catch (e) {
         String errorMsg = "Login failed";

@@ -1,8 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
-import 'package:pure_skin_ai/auth/screens/routen/routen_page.dart'; 
-import 'package:pure_skin_ai/auth/screens/products/product_page.dart'; 
-import 'package:pure_skin_ai/auth/screens/profile/profile_page.dart'; 
+import 'package:image_picker/image_picker.dart';
+import 'package:pure_skin_ai/auth/screens/product/product.dart';
+import 'package:pure_skin_ai/classifier.dart';
+import 'package:pure_skin_ai/auth/screens/profile/profile_page.dart';
+import 'package:pure_skin_ai/auth/screens/routen/routen_page.dart';
+import 'package:pure_skin_ai/auth/screens/products/product_page.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pure_skin_ai/auth/login_page.dart'; 
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -12,115 +17,222 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+  int _currentIndex = 0; 
 
-  
-  final List<Widget> _pages = [
-    const HomeContent(),    
-    const ProductPage(),   
-    const RoutinePage(),    
-    const ProfilePage(), 
-  ];
+  Widget _getBody() {
+    switch (_currentIndex) {
+      case 0:
+        return const AnalysisView(); 
+      case 1:
+        return const Product(); 
+      case 2:
+        return const RoutinePage();
+      case 3:
+        return const ProfilePage();
+      default:
+        return const AnalysisView();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_selectedIndex],
+      body: _getBody(),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: (index) {
+        currentIndex: _currentIndex,
+        // --- تعديل دالة الـ onTap لمنع الضيف ---
+        onTap: (index) async {
+          
+          if (index == 1) {
+            final SharedPreferences prefs = await SharedPreferences.getInstance();
+            bool isLogIn = prefs.getBool('isLogIn') ?? false;
+
+            if (!isLogIn) {
+              
+              if (!mounted) return;
+              
+              // ignore: use_build_context_synchronously
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Sorry, you must log in to see all products."),
+                  backgroundColor: Color(0xFF5E8C61),
+                ),
+              );
+
+              // توجيهه لصفحة تسجيل الدخول
+              Navigator.push(
+                // ignore: use_build_context_synchronously
+                context,
+                MaterialPageRoute(builder: (context) => const LogIn()),
+              );
+              return; // التوقف هنا لكي لا تفتح صفحة المنتجات في الخلفية
+            }
+          }
+
+          // إذا كان مسجلاً أو اختار أي صفحة أخرى غير المنتجات
           setState(() {
-            _selectedIndex = index;
+            _currentIndex = index;
           });
         },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: const Color(0xFF5F8063), 
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
+        selectedItemColor: const Color(0xFF5E8C61),
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed, 
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_bag), label: 'Products'),
-          BottomNavigationBarItem(icon: Icon(Icons.calendar_today), label: 'Routine'),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.local_mall_outlined), label: 'Products'),
+          BottomNavigationBarItem(icon: Icon(Icons.event_repeat_outlined), label: 'Routine'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_2_outlined), label: 'Profile'),
         ],
       ),
     );
   }
 }
 
-class HomeContent extends StatelessWidget {
-  const HomeContent({super.key});
+// كلاس AnalysisView يبقى كما هو دون تغيير
+class AnalysisView extends StatefulWidget {
+  const AnalysisView({super.key});
+
+  @override
+  State<AnalysisView> createState() => _AnalysisViewState();
+}
+
+class _AnalysisViewState extends State<AnalysisView> {
+  File? _image;
+  final picker = ImagePicker();
+  String _statusText = "Please attach a photo to analyze \n your skin with AI";
+  List<Map<String, dynamic>> _results = []; 
+  bool _isAnalysisLoading = false;
+  final SkinClassifier _classifier = SkinClassifier();
+  final Color themeColor = const Color(0xFF5E8C61);
+
+  @override
+  void initState() {
+    super.initState();
+    _classifier.loadModel();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    if (pickedFile != null) {
+      setState(() {
+        _image = File(pickedFile.path);
+        _isAnalysisLoading = true;
+        _results = [];
+        _statusText = "AI is analyzing...";
+      });
+
+      try {
+        final result = await _classifier.predict(_image!);
+        setState(() {
+          _isAnalysisLoading = false;
+          _results = result;
+          _statusText = _results.isEmpty ? "Skin looks clear!" : "Analysis complete:";
+        });
+      } catch (e) {
+        setState(() { 
+          _isAnalysisLoading = false; 
+          _statusText = "Error in analysis"; 
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    
-    String name = "User";
-    if (user != null) {
-      if (user.isAnonymous) {
-        name = "Guest";
-      } else if (user.email != null) {
-        name = user.email!.split('@')[0];
-      }
-    }
-
     return Container(
       width: double.infinity,
-      height: double.infinity,
       decoration: const BoxDecoration(
-        image: DecorationImage(
-          image: AssetImage('assets/bac1.jpeg'),
-          fit: BoxFit.cover,
-        ),
+        image: DecorationImage(image: AssetImage('assets/bac1.jpeg'), fit: BoxFit.cover),
       ),
       child: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 50),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text(
-                'Welcome, $name', 
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF5F8063),
-                ),
-              ),
-            ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 20),
+            Text("Pure Skin AI", style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: themeColor)),
+            const SizedBox(height: 20),
             
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 25),
               child: Container(
-                padding: const EdgeInsets.all(30),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.9),
                   borderRadius: BorderRadius.circular(30),
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.auto_awesome, color: Color(0xFF5F8063), size: 60),
-                    const SizedBox(height: 20),
-                    const Text(
-                      "Please attach a photo to analyze your skin with AI",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: _image != null 
+                        ? Image.file(_image!, height: 200, width: double.infinity, fit: BoxFit.cover)
+                        : Container(height: 200, color: Colors.white, child: Icon(Icons.face_retouching_natural, size: 90, color: themeColor)),
                     ),
-                    const SizedBox(height: 30),
-                    ElevatedButton.icon(
-                      onPressed: () {},
-                      icon: const Icon(Icons.add_a_photo, color: Colors.white),
-                      label: const Text("Upload Image", style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF5F8063),
-                        minimumSize: const Size(double.infinity, 60),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    const SizedBox(height: 15),
+                    Text(_statusText, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold)),
+                    
+                    if (_isAnalysisLoading)
+                      const Padding(
+                        padding: EdgeInsets.all(10.0),
+                        child: CircularProgressIndicator(),
                       ),
+
+                    ..._results.map((res) => Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+                      decoration: BoxDecoration(color: themeColor, borderRadius: BorderRadius.circular(10)),
+                      child: Text("${res['label']}: ${res['score']}%", style: const TextStyle(color: Colors.white)),
+                    )),
+                    
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: _pickImage,
+                      icon: const Icon(Icons.image, color: Colors.white),
+                      label: const Text("Upload from Gallery", style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(backgroundColor: themeColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15))),
                     ),
                   ],
                 ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            if (_results.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 25),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => ProductPage(results: _results),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: themeColor, width: 2),
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "Shop Recommended Products", 
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            
+            const Spacer(),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(30, 0, 30, 10),
+              child: Text(
+                "⚠️ Note: Analysis results are for guidance purposes only and do not replace professional medical consultation.",
+                textAlign: TextAlign.center, 
+                style: TextStyle(fontSize: 17, color: Colors.grey)
               ),
             ),
           ],
