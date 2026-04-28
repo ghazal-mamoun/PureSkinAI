@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:pure_skin_ai/auth/register_page.dart';
 import 'package:pure_skin_ai/auth/screens/Home/home_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:pure_skin_ai/auth/screens/product/product.dart'; 
 
 
 class LogIn extends StatefulWidget {
@@ -34,12 +33,12 @@ class _LogInState extends State<LogIn> {
           password: password.text.trim(),
         );
         final SharedPreferences prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLogin', true); 
-        
+      await prefs.setBool('isLogIn', true); 
+        print("Login status saved: true");
         if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const Product()),
+          MaterialPageRoute(builder: (context) => const HomePage()),
         );
       } on FirebaseAuthException catch (e) {
         String errorMsg = "Login failed";
@@ -68,6 +67,10 @@ class _LogInState extends State<LogIn> {
       Navigator.pop(context); 
 
       if (userCredential.user != null) {
+        final SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('isLogIn', false);
+        print("Login status saved: false");
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const HomePage()),

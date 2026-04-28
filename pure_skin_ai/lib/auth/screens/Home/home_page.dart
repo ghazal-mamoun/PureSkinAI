@@ -15,6 +15,7 @@ class HomePage extends StatefulWidget {
   @override
   State<HomePage> createState() => _HomePageState();
 }
+// ... (المكتبات والـ Imports تبقى كما هي)
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0; 
@@ -24,6 +25,7 @@ class _HomePageState extends State<HomePage> {
       case 0:
         return const AnalysisView(); 
       case 1:
+        // استدعاء الصفحة التي طلبتِها مع بقاء الشريط السفلي
         return const Product(); 
       case 2:
         return const RoutinePage();
@@ -40,42 +42,39 @@ class _HomePageState extends State<HomePage> {
       body: _getBody(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
-        // --- تعديل دالة الـ onTap لمنع الضيف ---
         onTap: (index) async {
-          
-          if (index == 1) {
-            final SharedPreferences prefs = await SharedPreferences.getInstance();
-            bool isLogIn = prefs.getBool('isLogIn') ?? false;
-
-            if (!isLogIn) {
-              
-              if (!mounted) return;
-              
-              // ignore: use_build_context_synchronously
-              ScaffoldMessenger.of(context).showSnackBar(
+  if (index == 1) {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    // إذا كان ضيفاً، ستكون القيمة false
+    bool isLogIn = prefs.getBool('isLogIn') ?? false; 
+    
+    if (!isLogIn) {
+      // الضيف يمنع من دخول المنتجات ويحول للوجن
+      if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text("Sorry, you must log in to see all products."),
                   backgroundColor: Color(0xFF5E8C61),
                 ),
               );
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const LogIn()),
+      );
+      return; 
+    }
+  }
 
-              // توجيهه لصفحة تسجيل الدخول
-              Navigator.push(
-                // ignore: use_build_context_synchronously
-                context,
-                MaterialPageRoute(builder: (context) => const LogIn()),
-              );
-              return; // التوقف هنا لكي لا تفتح صفحة المنتجات في الخلفية
-            }
-          }
 
-          // إذا كان مسجلاً أو اختار أي صفحة أخرى غير المنتجات
+
+          // --- إذا كان مسجلاً أو اختار أي صفحة أخرى ---
           setState(() {
-            _currentIndex = index;
+            _currentIndex = index; // سيفتح صفحة product.dart والشريط موجود
           });
         },
-        selectedItemColor: const Color(0xFF5E8C61),
-        unselectedItemColor: Colors.grey,
+        backgroundColor: const Color(0xFF5E8C61), // لون الشريط أخضر
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white70,
         type: BottomNavigationBarType.fixed, 
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
